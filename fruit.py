@@ -1,123 +1,119 @@
 import numpy as np
-import cv2 # To read the images by pixel
-import pandas as pd
-import matplotlib.pyplot as plt
-import glob # To read the location path
-import os # To read the location path and add the extention
-import random # To generate random index numbers
+import cv2
+import glob
+import os
 
-# train set: 19426 images
-# valid set: 6523 images
+# train set: 21876 images
+# valid set: 7353 images
 # each image is 100x100 pixels
-# there are 41 classes (fruit types)
+# there are 46 classes (fruit types)
 # r_img_idx mean rotated fruit
+# to display an image
+# cv2.imshow(' ',fruit_images[100])
+# cv2.waitKey(1)
+
+def reading_images(fruit_img, fruit_labels, img_folder):
+   for fruit_dir_path in glob.glob(img_folder):
+       fruit_name = fruit_dir_path.split("\\")[-1]
+       for image_path in glob.glob(os.path.join(fruit_dir_path, "*.jpg")):
+           image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+           image = cv2.resize(image, (50, 50))
+           fruit_img.append((image / 255.).tolist())
+           fruit_labels.append(fruit_name)
+   return fruit_img, fruit_labels
+
 
 fruit_images = []
 labels = []
-valid_img = []
-valid_labels = []
 
-for fruit_dir_path in glob.glob("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/fruits-360/Training/*"):
-   fruit_label = fruit_dir_path.split("/")[-1]
-   for image_path in glob.glob(os.path.join(fruit_dir_path, "*.jpg")):
-       image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-       image = cv2.resize(image, (30, 30))
-       #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # why convert color?
-       fruit_images.append(image)
-       labels.append(fruit_label[9:])
+fruit_images, labels = reading_images(fruit_images, labels, "C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/fruits-360/Training/*")
 
-for fruit_dir_path in glob.glob("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/fruits-360/Validation/*"):
-   fruit_label = fruit_dir_path.split("/")[-1]
-   for image_path in glob.glob(os.path.join(fruit_dir_path, "*.jpg")):
-       image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-       image = cv2.resize(image, (30, 30))
-       #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # why convert color?
-       valid_img.append(image)
-       valid_labels.append(fruit_label[11:])
+len(fruit_images)
 
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder # To categorize the fruit labels
-encoder = LabelEncoder()
-encoder_int =encoder.fit_transform(labels) # turn the labels to 0 - 45
-encoder_int = encoder_int.reshape(len(encoder_int), 1)
-onehot_encoder = OneHotEncoder(sparse=False)
-labels_encoded = onehot_encoder.fit_transform(encoder_int)
+fruit_images, labels = reading_images(fruit_images, labels, "C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/fruits-360/Validation/*")
 
-encoder = LabelEncoder()
-valid_encoder_int =encoder.fit_transform(valid_labels) # turn the labels to 0 - 40
-valid_encoder_int = valid_encoder_int.reshape(len(valid_encoder_int),1)
-valid_onehot_encoder = OneHotEncoder(sparse=False)
-valid_labels_encoded = valid_onehot_encoder.fit_transform(valid_encoder_int)
 
-cv2.imshow(' ', fruit_images[100])
-cv2.waitKey(1)
+def helper_label(list_of_labels):
+   from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+   encoder = LabelEncoder()
+   # turn the labels to 0 - 45
+   encoder_int = encoder.fit_transform(list_of_labels)
+   encoder_int = encoder_int.reshape(len(encoder_int), 1)
+   one_hot_encoder = OneHotEncoder(sparse=False)
+   labels_encoded = one_hot_encoder.fit_transform(encoder_int)
+   return labels_encoded
 
-standardized_image = [] # to standardize each image: by dividing everything by 255
-for image in fruit_images:
-   standardized_image.append(image/255.)
-valid_standardized_image = []
-for image in valid_img:
-   valid_standardized_image.append(image/255.)
 
+encoded_labels = helper_label(labels)
+
+
+# generate random index numbers
+import random
+# randomize the index
+idx = random.sample(range(len(labels)), len(labels))
+# turn into array, to make the calculation faster?
+idx = np.array(idx)
+encoded_labels = np.array(encoded_labels)
+fruit_images = np.array(fruit_images)
+# save those indexes
+train_idx = idx[:int(len(idx)*0.7)]
+validation_idx = idx[int(len(idx)*0.7):int(len(idx)*0.95)]
+test_idx = idx[int(len(idx)*0.95):]
+# apply those index to training, validation, and test set
+labels_train = encoded_labels [train_idx]
+image_train = fruit_images[train_idx]
+labels_valid = encoded_labels [validation_idx]
+image_valid = fruit_images[validation_idx]
+labels_test = encoded_labels [test_idx]
+image_test = fruit_images[test_idx]
+# check the distribution of the labels
+sum(encoded_labels)
+sum(labels_train)
+sum(labels_valid)
+sum(labels_test)
+# frequency table, if needed
+from collections import Counter
+freq = Counter(labels_train)
+# train the model
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
-from keras.layers import Dropout, Flatten, Dense
+from keras.layers import Dropout, Dense ,Flatten
 from keras.models import Sequential
-
 model = Sequential()
-model.add(Conv2D(filters=16, kernel_size=2, padding='same', activation='relu', input_shape=(30, 30, 3)))
+model.add(Conv2D(filters=8, kernel_size=2, padding='same', activation='relu', input_shape=(50, 50, 3)))
 model.add(MaxPooling2D(pool_size=2))
 model.add(Dropout(0.3))
-model.add(Conv2D(filters=32, kernel_size=2, padding='same',activation='relu'))
+model.add(Conv2D(filters=16, kernel_size=2, padding='same', activation='relu'))
 model.add(MaxPooling2D(pool_size=2))
-model.add(Conv2D(filters=64, kernel_size=2, padding='same',activation='relu'))
+model.add(Dropout(0.3))
+model.add(Conv2D(filters=32, kernel_size=2, padding='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=2))
+model.add(Conv2D(filters=64, kernel_size=2, padding='same', activation='relu'))
 model.add(MaxPooling2D(pool_size=2))
 model.add(GlobalAveragePooling2D())
-model.add(Dense(41, activation='softmax'))
+model.add(Dense(46, activation='softmax'))
 model.summary()
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
-standardized_image2 = []
-for image in standardized_image:
-   standardized_image2.append(image.tolist())
-valid_standardized_image2 = []
-for image in valid_standardized_image:
-   valid_standardized_image2.append(image.tolist())
-model.fit(standardized_image2,labels_encoded ,validation_data=(valid_standardized_image2, valid_labels_encoded )
-         , batch_size=20,epochs = 5 )
+model.fit(image_train, labels_train,
+         validation_data=(image_valid, labels_valid),
+         batch_size=10, epochs=8, verbose=0)
 
-# 1/12/2018
-# try to merge training set and validation set
-# randomly select N image from each category.
-# randomly split into training (70%) and validation (20%) and test set(10%).
-fruit_images = []
-labels = []
-for fruit_dir_path in glob.glob("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/fruits-360/Training/*"):
-   fruit_label = fruit_dir_path.split("/")[-1]
-   for image_path in glob.glob(os.path.join(fruit_dir_path, "*.jpg")):
-       image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-       image = cv2.resize(image, (30, 30))
-       #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # why convert color?
-       fruit_images.append(image)
-       labels.append(fruit_label[9:])
-for fruit_dir_path in glob.glob("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/fruits-360/Validation/*"):
-   fruit_label = fruit_dir_path.split("/")[-1]
-   for image_path in glob.glob(os.path.join(fruit_dir_path, "*.jpg")):
-       image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-       image = cv2.resize(image, (30, 30))
-       #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # why convert color?
-       fruit_images.append(image)
-       labels.append(fruit_label[11:])
-len(labels)
 
-idx = random.sample(range(len(labels)),len(labels)) # randomize the index
-idx = np.array(idx) # turn into array in order to make the calculation faster
-labels = np.array(labels)
-fruit_images = np.array(fruit_images)
-int(len(idx)*0.7)#70% of the data
-# frequency table
-from collections import Counter
-freq = Counter(labels)
-a = ['a','b','c','d','b','c','a','d','e']
-b = random.sample(range(len(a)),len(a)) # randomize the index
-b = np.array(b)
-a = np.array(a)
-a = a[b].tolist()
-a
+
+# test the trained model on test set
+# test_result: real label, number of position where 1 occurs (from 0-40)
+# np.where(labels_test == 1): pred label, number of position where 1 occurs (from 0-40)
+test_result = model.predict_classes(image_test)
+number_correct = 0
+for i in range(len(test_result)):
+   if test_result[i] == np.where(labels_test == 1)[1][i]:
+       number_correct += 1
+print("The accuracy on test set is {:.2f}%".format(number_correct/len(test_result)*100))
+
+# test on real life picture
+test_path = glob.glob("C:/Users/tam9/Desktop/Python/fruit_image/test/*")
+# test_path = "C:/Users/tam9/Desktop/Python/fruit_image/test\lemon.jpg)"
+test_img = cv2.imread(test_path[8], cv2.IMREAD_COLOR)
+test_img = cv2.resize(test_img, (50, 50))
+# test_img = test_img / 255.
+test_img = test_img.reshape(1, 50, 50, 3)
+model.predict_classes(test_img)
