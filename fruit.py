@@ -93,6 +93,28 @@ sum(labels_test)
 from collections import Counter
 freq = Counter(labels)
 
+
+
+# run a benchmark model
+# basic benchmark model ( in development)
+from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
+from keras.layers import Dropout, Dense, Flatten
+from keras.models import Sequential
+benchmark_model = Sequential()
+benchmark_model.add(Flatten(input_shape=image_train.shape[1:])) #image_train.shape[1:] is (100,100,3)
+benchmark_model.add(Dense(1024, activation='relu'))
+benchmark_model.add(Dropout(0.3))
+benchmark_model.add(Dense(1024, activation='relu'))
+benchmark_model.add(Dropout(0.3))
+benchmark_model.add(Dense(22, activation='softmax'))
+benchmark_model.summary()
+
+benchmark_model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+benchmark_model.fit(image_train, labels_train,
+          validation_data=(image_valid, labels_valid),
+          batch_size=100, epochs=5)
+
+
 # train the model
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
 from keras.layers import Dropout, Dense, Flatten
