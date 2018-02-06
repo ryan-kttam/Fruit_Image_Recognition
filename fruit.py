@@ -3,16 +3,6 @@ import cv2
 import glob
 import os
 
-
-# train set: 21876 images
-# valid set: 7353 images
-# each image is 100x100 pixels
-# there are 46 classes (fruit types)
-# r_img_idx mean rotated fruit
-# to display an image
-# cv2.imshow(' ',fruit_images[100])
-# cv2.waitKey(1)
-
 def reading_images(fruit_img, fruit_labels, img_folder):
     for fruit_dir_path in glob.glob(img_folder):
         fruit_name = fruit_dir_path.split("\\")[-1]
@@ -49,8 +39,8 @@ fruit_images, labels = reading_images(fruit_images, labels,
 len(fruit_images)
 110 + 115 + 108 + 120 + 100 + 99 + 100 + 108 + 101 + 100 + 120 + 117 + 116 + 100 + 101 + 100 + 115 + 100 + 100 + 119 + 100 + 100
 
-import collections
-collections.Counter(labels)
+#import collections
+#collections.Counter(labels)
 
 def helper_label(list_of_labels):
     from sklearn.preprocessing import OneHotEncoder, LabelEncoder
@@ -96,7 +86,7 @@ sum(labels_test)
 # freq = Counter(labels)
 
 
-
+# -------------------------- B E N C H M A R K   M O D E L  ------------------------
 # run a benchmark model
 # basic benchmark model (in development)
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
@@ -117,13 +107,14 @@ benchmark_model.fit(image_train, labels_train,
                     validation_data=(image_valid, labels_valid),
                     batch_size=50, epochs=10)
 
+# -------------------------- B E N C H M A R K   M O D E L  E N D ------------------------
+# ----------------M O D E L   F R O M   S C R A T C H ---------------------------
 # train the model
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
 from keras.layers import Dropout, Dense, Flatten
 from keras.models import Sequential
 from keras import optimizers
 from keras.callbacks import ModelCheckpoint, EarlyStopping
-
 
 def cnn_from_scratch():
     model = Sequential()
@@ -150,8 +141,9 @@ def optimizer_generator(optimizer, learn_rate=0.01):
     else:
         return optimizers.SGD(lr=learn_rate)
 
-def fine_tuning(cnn_model, optimizer, learn_rate):
-
+def fine_tuning(cnn_model, optimizer, learn_rate, model_type = ""):
+    if model_type == "":
+        return "please specify which model you are training."
     model_optimizer = optimizer_generator(optimizer, learn_rate)
     cnn_model.compile(optimizer=model_optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
     checkpt = ModelCheckpoint("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/checkpt.h5", monitor='val_acc',
@@ -163,12 +155,22 @@ def fine_tuning(cnn_model, optimizer, learn_rate):
                   validation_data=(image_valid, labels_valid),
                   batch_size=100, epochs=50, callbacks=[checkpt, early_stop])
     cnn_model.load_weights("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/checkpt.h5")
-    valid_pred_class = cnn_model.predict_classes(image_valid)
-    number_correct = 0
-    for i in range(len(labels_valid)):
-        if valid_pred_class[i] == np.where(labels_valid == 1)[1][i]:
-            number_correct += 1
-    print("For {} with learning rate {}, The accuracy on test set is {:.2f}%".format(optimizer, learn_rate, number_correct / len(valid_pred_class) * 100))
+    if model_type == "scratch":
+        valid_pred_class = cnn_model.predict_classes(image_valid)
+        number_correct = 0
+        for i in range(len(labels_valid)):
+            if valid_pred_class[i] == np.where(labels_valid == 1)[1][i]:
+                number_correct += 1
+        print("For {} with learning rate {}, The accuracy on test set is {:.2f}%".format(optimizer, learn_rate, number_correct / len(valid_pred_class) * 100))
+
+    elif model_type == "pre_trained":
+        prediction = transfered_model.predict(image_valid)
+        number_correct = 0
+        for i in range(len(prediction)):
+            if np.where(prediction[i] == max(prediction[i])) == np.where(labels_valid[i] == 1):
+                number_correct += 1
+        print("For {} with learning rate {}, The accuracy on test set is {:.2f}%".format(optimizer, learn_rate,
+                                                                                         number_correct / len(prediction) * 100))
 
 fine_tuning(cnn_from_scratch(), "rms", 0.1)
 
@@ -179,30 +181,36 @@ number_correct = 0
 for i in range(len(labels_valid)):
     if valid_pred_class[i] == np.where(labels_valid == 1)[1][i]:
         number_correct += 1
+        # ----------------M O D E L   F R O M   S C R A T C H  E N D ---------------------------
 
-# --------------------------transfer learning
+# -------------------------- T R A N S F E R   L E A R N I N G ----------------------------
 from keras import applications
 from keras.models import Model
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 
-model = applications.VGG16(weights="imagenet", include_top=False, input_shape=(100, 100, 3))
+def pre_trained(trainable): # trainable is a boolean
+    model = applications.VGG16(weights="imagenet", include_top=False, input_shape=(100, 100, 3))
+    if not trainable:
+        for layer in model.layers[:]:
+            layer.trainable = False
+    else:
+        for layer in model.layers[:-5]:
+            layer.trainable = False
 
-for layer in model.layers[:]:
-    layer.trainable = False
+    x = model.output
+    x = Flatten()(x)
+    x = Dense(1024, activation='relu')(x)  # or 512
+    x = Dropout(0.2)(x)
+    x = Dense(22, activation='softmax')(x)
+    transfered_model = Model(inputs=model.input, output=x)
+    transfered_model.summary()
+    return transfered_model
 
-x = model.output
-x = Flatten()(x)
-x = Dense(1024, activation='relu')(x)  # or 512
-x = Dropout(0.2)(x)
-x = Dense(22, activation='softmax')(x)
+#aa = optimizers.RMSprop(lr=0.001)
 
-transfered_model = Model(inputs=model.input, output=x)
-transfered_model.summary()
+fine_tuning(pre_trained(False), "rms", 0.001, "pre_trained")
 
-fine_tuning(transfered_model, "rms", 0.01)
-
-
-transfered_model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+transfered_model.compile(optimizer=aa, loss='categorical_crossentropy', metrics=['accuracy'])
 
 checkpt = ModelCheckpoint("vgg16_1.h5", monitor='val_acc',
                           save_best_only=True, save_weights_only=False,
@@ -212,6 +220,15 @@ early_stop = EarlyStopping(monitor='val_acc', min_delta=0, patience=5, mode='aut
 transfered_model.fit(image_train, labels_train,
                      validation_data=(image_valid, labels_valid),
                      batch_size=100, epochs=20, callbacks=[checkpt, early_stop])
+
+pp = transfered_model.predict(image_valid)
+number_correct = 0
+for i in range(len(pp)):
+    if np.where(pp[i] == max(pp[i])) == np.where ( labels_valid[i] == 1):
+        number_correct += 1
+
+print("For {} with learning rate {}, The accuracy on test set is {:.2f}%".format(optimizer, learn_rate, number_correct / len(valid_pred_class) * 100))
+np.where ( labels_valid[250] == 1) == np.where(pp[250] == max(pp[250]) )
 
 # ------------------------end transfer learning --------------------------
 
