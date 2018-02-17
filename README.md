@@ -12,7 +12,9 @@ Libraries:
  - keras.models
  - keras optimizers
  - keras.callbacks
- 
+ - collections
+ - matplotlib
+
 Sample dataset is available at: 
 https://github.com/ryan-kttam/Fruit_Image_Recognition/tree/master/fruits
 
