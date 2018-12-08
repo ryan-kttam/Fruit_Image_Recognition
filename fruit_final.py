@@ -224,13 +224,13 @@ def process_image_real_life(img_folder, dim):
 real_life_img = []
 real_life_labels = []
 
-process_image_real_life("C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/new_fruit/real_life_test/test/*", ndim)
+process_image_real_life("C:/real_life_test/test/*", ndim)
 
 real_life_img, real_life_labels = reading_images(real_life_img, real_life_labels,
-                                                 "C:/Users/Ryan/Desktop/Udacity Machine Learning/capstone/new_fruit/real_life_test/test/*")
+                                                 "C:/real_life_test/test/*")
 
 t_model = pre_trained(False, 100)
-t_model.load_weights("C:/Users/Ryan/Desktop/Python_Projects/Fruit recognition v2/checkpt.h5")
+t_model.load_weights("C:/Fruit recognition v2/checkpt.h5")
 prediction = t_model.predict(real_life_img)
 number_correct = 0
 np.where(prediction[0] == max(prediction[0]))
