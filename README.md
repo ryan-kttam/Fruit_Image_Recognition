@@ -2,7 +2,7 @@
 
 Software requirement: Python 3.6
 
-Libraries: 
+Libraries:
  - numpy
  - cv2
  - glob
@@ -10,12 +10,10 @@ Libraries:
  - random
  - keras.layers
  - keras.models
- - keras optimizers
+ - keras
  - keras.callbacks
- - collections
- - matplotlib
+ - scipy.ndimage
 
-Sample dataset is available at: 
-https://github.com/ryan-kttam/Fruit_Image_Recognition/tree/master/fruits
+Detail about this project is available [here](https://ryan-kttam.github.io/fruit_image_recognition/)
 
-Note: The sample dataset is the initial version of the dataset. These images might not be up to date. 
+Note: The sample dataset is the initial version of the dataset. These images might not be up to date.
