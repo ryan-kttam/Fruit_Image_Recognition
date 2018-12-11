@@ -16,7 +16,6 @@ Libraries:
 
 Detail about this project is available [here](https://ryan-kttam.github.io/fruit_image_recognition/).
 
-Sample dataset is available at:
-https://github.com/ryan-kttam/Fruit_Image_Recognition/tree/master/fruits
+Sample dataset and the weights of the model are available in the directory.
 
 Note: The sample dataset is the initial version of the dataset. These images might not be up to date.
